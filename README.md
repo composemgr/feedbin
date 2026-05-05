@@ -50,9 +50,9 @@ See `docker-compose.yaml` for complete list of configurable options.
 
 ## 📂 Volumes
 
-- `./rootfs/data/feedbin` - Data storage
-- `./rootfs/config/feedbin` - Data storage
-- `./rootfs/data/db/postgres/feedbin` - Data storage
+- `./volumes/data/feedbin` - Data storage
+- `./volumes/config/feedbin` - Data storage
+- `./volumes/data/db/postgres/feedbin` - Data storage
 
 ## 🔐 Security
 
