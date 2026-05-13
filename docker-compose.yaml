@@ -1,4 +1,7 @@
 # nginx proxy address - http://172.17.0.1:8083
+# NOTE: feedbin/feedbin is not an official public Docker image. Feedbin is a hosted SaaS service.
+# Community self-hosted options exist (e.g. angristan/feedbin-docker) but are multi-container setups.
+# This compose is a placeholder - replace the image with a community image if self-hosting.
 
 name: feedbin
 x-logging: &default-logging
