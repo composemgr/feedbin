@@ -16,6 +16,8 @@ services:
     logging: *default-logging
     networks:
       - feedbin
+      - proxy
+      - cloudflare
     ports:
       - "172.17.0.1:8083:3000"
     environment:
@@ -23,10 +25,28 @@ services:
       SECRET_KEY_BASE: ${APP_SECRET_KEY:-changeme_secret_key_min_32_chars}
       DATABASE_URL: postgres://${DB_USER_NAME:-feedbin}:${DB_USER_PASS:-changeme_db_password}@feedbin-db:5432/${DB_CREATE_DATABASE_NAME:-feedbin}
       SINGLE_USER_MODE: ${SINGLE_USER_MODE:-false}
+      CONTAINER_NAME: feedbin-app
+      HOSTNAME: ${BASE_HOST_NAME:-$HOSTNAME}
     volumes:
       - ./volumes/data/feedbin:/data
     depends_on:
       - feedbin-db
+    labels:
+      - 'traefik.enable=true'
+      - 'cloudflare.enable=true'
+      - 'traefik.docker.network=proxy'
+      - 'cloudflare.service=http://feedbin-app:3000'
+      - 'cloudflare.hostname=feedbin.${CLOUDFLARE_ZONE_NAME:-}'
+      - 'traefik.http.routers.feedbin-app.entrypoints=http'
+      - 'traefik.http.routers.feedbin-app-secure.tls=true'
+      - 'traefik.http.routers.feedbin-app.rule=Host($(${BASE_HOST_NAME:-$HOSTNAME}))'
+      - 'traefik.http.middlewares.feedbin-app-https-redirect.redirectscheme.scheme=https'
+      - 'traefik.http.routers.feedbin-app.middlewares=feedbin-app-https-redirect'
+      - 'traefik.http.routers.feedbin-app-secure.entrypoints=https'
+      - 'traefik.http.routers.feedbin-app-secure.rule=Host($(${BASE_HOST_NAME:-$HOSTNAME}))'
+      - 'traefik.http.routers.feedbin-app-secure.tls.certresolver=cloudflare'
+      - 'traefik.http.routers.feedbin-app-secure.service=feedbin-app'
+      - 'traefik.http.services.feedbin-app.loadbalancer.server.port=3000'
 
   feedbin-db:
     image: postgres:latest
@@ -41,6 +61,7 @@ services:
       POSTGRES_DB: ${DB_CREATE_DATABASE_NAME:-feedbin}
       POSTGRES_USER: ${DB_USER_NAME:-feedbin}
       POSTGRES_PASSWORD: ${DB_USER_PASS:-changeme_db_password}
+      CONTAINER_NAME: feedbin-db
     volumes:
       - ./volumes/data/db/postgres/feedbin:/var/lib/postgresql/data
     healthcheck:
@@ -53,3 +74,7 @@ networks:
   feedbin:
     name: feedbin
     external: false
+  proxy:
+    external: true
+  cloudflare:
+    external: true
