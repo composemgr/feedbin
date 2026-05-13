@@ -1,5 +1,6 @@
 # nginx proxy address - http://172.17.0.1:8083
 
+name: feedbin
 x-logging: &default-logging
   driver: json-file
   options:
@@ -9,25 +10,29 @@ x-logging: &default-logging
 services:
   feedbin:
     image: feedbin/feedbin:latest
+    pull_policy: always
     container_name: feedbin-app
-    restart: unless-stopped
+    restart: always
     logging: *default-logging
     networks:
       - feedbin
     ports:
-      - "8083:3000"
+      - "172.17.0.1:8083:3000"
     environment:
       TZ: ${TZ:-America/New_York}
+      SECRET_KEY_BASE: ${APP_SECRET_KEY:-changeme_secret_key_min_32_chars}
+      DATABASE_URL: postgres://${DB_USER_NAME:-feedbin}:${DB_USER_PASS:-changeme_db_password}@feedbin-db:5432/${DB_CREATE_DATABASE_NAME:-feedbin}
+      SINGLE_USER_MODE: ${SINGLE_USER_MODE:-false}
     volumes:
       - ./volumes/data/feedbin:/data
-      - ./volumes/config/feedbin:/config
     depends_on:
       - feedbin-db
 
   feedbin-db:
-    image: postgres:16-alpine
+    image: postgres:latest
+    pull_policy: always
     container_name: feedbin-db
-    restart: unless-stopped
+    restart: always
     logging: *default-logging
     networks:
       - feedbin
@@ -46,4 +51,5 @@ services:
 
 networks:
   feedbin:
+    name: feedbin
     external: false
