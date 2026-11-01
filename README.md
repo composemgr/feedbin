@@ -4,15 +4,21 @@ Fast, simple RSS reader with a great reading experience
 
 ## 📋 Description
 
-Fast, simple RSS reader with a great reading experience
+Fast, simple RSS reader with a great reading experience.
+
+> **Warning:** the `feedbin/feedbin` image does not exist as a public image.
+> Feedbin is a hosted SaaS service with no official self-hosted distribution,
+> so this stack will not pull as written. The compose structure is correct and
+> ready for a real image: point `image:` at a working self-hosted Feedbin image
+> and confirm its native port before deploying.
 
 ## 🚀 Services
 
-- **feedbin**: feedbin/feedbin:latest
+- **app**: feedbin/feedbin:latest
 
 ### Infrastructure Components
 
-- **feedbin-db**: Postgres database
+- **feedbin-db**: PostgreSQL database
 
 
 ## 📦 Installation
@@ -26,7 +32,8 @@ curl -q -LSsf "https://raw.githubusercontent.com/composemgr/feedbin/main/docker-
 ```bash
 git clone "https://github.com/composemgr/feedbin" ~/.local/srv/docker/feedbin
 cd ~/.local/srv/docker/feedbin
-docker compose up -d
+cp default.env .env
+docker compose --env-file .env up -d
 ```
 
 ### Option 3: Using composemgr
@@ -40,19 +47,54 @@ composemgr install feedbin
 
 ```shell
 TZ=America/New_York
+DB_USER_NAME=feedbin
+DB_USER_PASS=replace-with-a-random-password
+DB_CREATE_DATABASE_NAME=feedbin
 ```
 
 See `docker-compose.yaml` for complete list of configurable options.
 
+### Environment Files
+
+`default.env.sample` holds the full set of variables and is copied to `.env`
+before starting the stack:
+
+```bash
+cp default.env .env
+docker compose --env-file .env up -d
+```
+
+`app.env.sample` holds the app-specific overrides and is copied to `app.env`:
+
+```bash
+cp app.env.sample app.env
+```
+
+`composemgr up` applies `app.env` and `default.env` automatically. Raw
+`docker compose` commands need `--env-file .env` to pick up the same values.
+
+### Reverse Proxy
+
+Three standalone compose files ship in this repo:
+
+| File | Use |
+|------|-----|
+| `docker-compose.yaml` | Default, published on `172.17.0.1:64168` |
+| `docker-compose.traefik.yaml` | Behind an existing external `traefik` network |
+| `docker-compose.tunnel.yaml` | Behind an existing external `cloudflare` tunnel network |
+
+```bash
+docker compose -f docker-compose.traefik.yaml --env-file .env up -d
+```
+
 ## 🌐 Access
 
-- **Web Interface**: http://172.17.0.1:8083
+- **Web Interface**: http://172.17.0.1:64168
 
 ## 📂 Volumes
 
-- `./volumes/data/feedbin` - Data storage
-- `./volumes/config/feedbin` - Data storage
-- `./volumes/data/db/postgres/feedbin` - Data storage
+- `./volumes/db/postgres/feedbin` - PostgreSQL database files
+
 
 ## 🔐 Security
 
@@ -65,26 +107,26 @@ See `docker-compose.yaml` for complete list of configurable options.
 ## 🔍 Logging
 
 ```shell
-docker compose logs -f app
+docker compose --env-file .env logs -f app
 ```
 
 ## 🛠️ Management
 
 ```bash
 # Start services
-docker compose up -d
+docker compose --env-file .env up -d
 
 # Stop services
-docker compose down
+docker compose --env-file .env down
 
 # Update to latest images
-docker compose pull && docker compose up -d
+docker compose --env-file .env pull && docker compose --env-file .env up -d
 
 # View logs
-docker compose logs -f
+docker compose --env-file .env logs -f
 
 # Restart services
-docker compose restart
+docker compose --env-file .env restart
 ```
 
 ## 📋 Requirements

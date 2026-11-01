@@ -1,0 +1,85 @@
+# NOTE: the feedbin/feedbin image is NOT a valid public image. Feedbin is a
+# hosted SaaS service with no official self-hosted distribution, so this
+# reference is kept as-is and will not pull. The structure below is correct and
+# ready for a real image: set `image:` to a working self-hosted Feedbin image
+# and confirm its native port before deploying.
+
+name: feedbin
+x-logging: &default-logging
+  options:
+    max-size: '5m'
+    max-file: '1'
+  driver: json-file
+
+services:
+  app:
+    image: feedbin/feedbin:latest
+    container_name: feedbin-app
+    domainname: ${BASE_DOMAIN_NAME:-example.com}
+    hostname: ${BASE_HOST_NAME:-$HOSTNAME}
+    restart: always
+    pull_policy: always
+    logging: *default-logging
+    environment:
+      TZ: ${TZ:-America/New_York}
+      CONTAINER_NAME: feedbin-app
+      HOSTNAME: ${BASE_HOST_NAME:-$HOSTNAME}
+      DB_HOST: feedbin-db
+      DB_PORT: '5432'
+      DB_NAME: ${DB_CREATE_DATABASE_NAME:-feedbin}
+      DB_USER: ${DB_USER_NAME:-feedbin}
+      DB_PASSWORD: ${DB_USER_PASS:-replace-with-a-random-password}
+    depends_on:
+      feedbin-db:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:3000']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    labels:
+      - 'traefik.enable=true'
+      - 'traefik.docker.network=traefik'
+      - 'traefik.http.routers.feedbin-app.entrypoints=http'
+      - 'traefik.http.routers.feedbin-app.rule=Host(`${BASE_HOST_NAME:-$HOSTNAME}`)'
+      - 'traefik.http.routers.feedbin-app.middlewares=feedbin-app-https-redirect'
+      - 'traefik.http.middlewares.feedbin-app-https-redirect.redirectscheme.scheme=https'
+      - 'traefik.http.routers.feedbin-app-secure.entrypoints=https'
+      - 'traefik.http.routers.feedbin-app-secure.rule=Host(`${BASE_HOST_NAME:-$HOSTNAME}`)'
+      - 'traefik.http.routers.feedbin-app-secure.tls.certresolver=cloudflare'
+      - 'traefik.http.routers.feedbin-app-secure.service=feedbin-app'
+      - 'traefik.http.services.feedbin-app.loadbalancer.server.port=3000'
+    networks:
+      - feedbin
+      - traefik
+
+  feedbin-db:
+    image: postgres:latest
+    container_name: feedbin-db
+    domainname: ${BASE_DOMAIN_NAME:-example.com}
+    hostname: feedbin-db
+    restart: always
+    pull_policy: always
+    logging: *default-logging
+    environment:
+      TZ: ${TZ:-America/New_York}
+      CONTAINER_NAME: feedbin-db
+      POSTGRES_DB: ${DB_CREATE_DATABASE_NAME:-feedbin}
+      POSTGRES_USER: ${DB_USER_NAME:-feedbin}
+      POSTGRES_PASSWORD: ${DB_USER_PASS:-replace-with-a-random-password}
+    volumes:
+      - './volumes/db/postgres/feedbin:/var/lib/postgresql/data:z'
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - feedbin
+
+networks:
+  feedbin:
+    name: feedbin
+    external: false
+  traefik:
+    external: true
